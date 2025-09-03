@@ -4,14 +4,38 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Render participants into a card's participants section
+  function renderParticipants(container, participants) {
+    const countEl = container.querySelector(".participants-count");
+    const listEl = container.querySelector(".participants-list");
+    const emptyEl = container.querySelector(".participants-empty");
+
+    listEl.innerHTML = "";
+    if (Array.isArray(participants) && participants.length) {
+      participants.forEach((name) => {
+        const li = document.createElement("li");
+        li.textContent = name;
+        listEl.appendChild(li);
+      });
+      countEl.textContent = String(participants.length);
+      listEl.classList.remove("hidden");
+      emptyEl.classList.add("hidden");
+    } else {
+      countEl.textContent = "0";
+      listEl.classList.add("hidden");
+      emptyEl.classList.remove("hidden");
+    }
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
       const response = await fetch("/activities");
       const activities = await response.json();
 
-      // Clear loading message
+      // Clear loading message and reset select
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -25,7 +49,19 @@ document.addEventListener("DOMContentLoaded", () => {
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants">
+            <h5 class="participants-title">
+              Participants <span class="participants-count">0</span>
+            </h5>
+            <ul class="participants-list"></ul>
+            <div class="participants-empty hidden">No participants yet</div>
+          </div>
         `;
+
+        renderParticipants(
+          activityCard.querySelector(".participants"),
+          details.participants || []
+        );
 
         activitiesList.appendChild(activityCard);
 
@@ -51,9 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const response = await fetch(
         `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
-        {
-          method: "POST",
-        }
+        { method: "POST" }
       );
 
       const result = await response.json();
@@ -62,6 +96,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh UI so participants immediately reflect the signup
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
